@@ -1,0 +1,68 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "import", "unicorn", "promise", "react"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
+  },
+  "overrides": [
+    {
+      "files": ["src/core/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "react",
+                  "react-native",
+                  "react-native-android-widget",
+                  "expo-router"
+                ],
+                "message": "core runs without React."
+              },
+              {
+                "group": ["**/widget/**", "**/app/**"],
+                "message": "core cannot depend on the widget or the app."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/widget/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/app/**"],
+                "message": "widget and app only share core."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/app/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/widget/**"],
+                "message": "widget and app only share core."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
