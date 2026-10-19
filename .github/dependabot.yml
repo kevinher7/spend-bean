@@ -10,8 +10,6 @@ updates:
       dependencies:
         patterns:
           - "*"
-    # Expo SDK upgrades go through `npx expo install expo@latest --fix`,
-    # which moves expo, react-native and react together.
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
