@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import type { ExpoConfig } from "expo/config";
 
 const isDev = process.env.APP_VARIANT === "dev";
@@ -27,7 +28,7 @@ const config: ExpoConfig = {
     },
     predictiveBackGestureEnabled: false,
   },
-  plugins: ["expo-router", "expo-status-bar"],
+  plugins: ["expo-router"],
 };
 
 export default config;
