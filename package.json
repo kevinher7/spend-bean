@@ -1,0 +1,45 @@
+{
+  "name": "spend-bean",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Android widgets for daily and weekly spending against an Actual Budget monthly budget",
+  "license": "MIT",
+  "author": "Kevin Hernandez",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "android:dev": "APP_VARIANT=dev expo run:android",
+    "typecheck": "tsc",
+    "lint": "oxlint --type-aware",
+    "lint:fix": "oxlint --type-aware --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "test": "vitest run --passWithNoTests",
+    "check": "npm run typecheck && npm run format:check && npm run lint && npm test"
+  },
+  "dependencies": {
+    "effect": "^4.0.5",
+    "expo": "~58.0.16",
+    "expo-constants": "~58.0.12",
+    "expo-linking": "~58.0.13",
+    "expo-router": "~58.0.24",
+    "expo-status-bar": "~58.0.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.88.0",
+    "oxlint-tsgolint": "^7.0.2004",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": "^22.22.3"
+  }
+}
