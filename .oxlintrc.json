@@ -8,7 +8,13 @@
   },
   "rules": {
     "react/react-in-jsx-scope": "off",
-    "react/style-prop-object": "off"
+    "react/style-prop-object": "off",
+    "typescript/consistent-type-assertions": [
+      "error",
+      {
+        "assertionStyle": "never"
+      }
+    ]
   },
   "overrides": [
     {
@@ -30,8 +36,35 @@
               {
                 "group": ["**/widget/**", "**/app/**"],
                 "message": "core cannot depend on the widget or the app."
+              },
+              {
+                "group": ["effect/http/FetchHttpClient"],
+                "message": "core depends on HttpClient, not on a specific implementation."
               }
             ]
+          }
+        ],
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "Effect",
+            "property": "provide",
+            "message": "core leaves requirements open. Provide layers in app/ or widget/."
+          },
+          {
+            "object": "Effect",
+            "property": "runPromise",
+            "message": "core never runs effects. Run them in app/ or widget/."
+          },
+          {
+            "object": "Effect",
+            "property": "runSync",
+            "message": "core never runs effects. Run them in app/ or widget/."
+          },
+          {
+            "object": "Effect",
+            "property": "runFork",
+            "message": "core never runs effects. Run them in app/ or widget/."
           }
         ]
       }
