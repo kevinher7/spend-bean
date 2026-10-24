@@ -29,6 +29,7 @@ const config: ExpoConfig = {
     predictiveBackGestureEnabled: false,
   },
   plugins: [
+    ["expo-build-properties", { android: { buildArchs: ["arm64-v8a"] } }],
     "expo-router",
     "expo-secure-store",
     [

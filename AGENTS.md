@@ -39,6 +39,32 @@ npm run compose:down  # stop compose and delete its data
 
 After recording fixtures, regenerate the goldens with `npx vitest run -u` and review the diff.
 
+## Releasing
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`. It builds a signed arm64-v8a APK and attaches it to a GitHub release as `spend-bean-<version>-arm64-v8a.apk`. The version and `versionCode` come from the tag.
+
+One-time setup. Generate the keystore and back it up outside the repo. If it is lost, Android refuses to install updates over the existing app, and the only way out is to uninstall it.
+
+```bash
+keytool -genkeypair -v -keystore spend-bean-release.jks -alias spend-bean -keyalg RSA -keysize 4096 -validity 10000
+base64 -i spend-bean-release.jks | gh secret set ANDROID_KEYSTORE_BASE64
+gh secret set ANDROID_KEYSTORE_PASSWORD
+gh secret set ANDROID_KEY_ALIAS      # spend-bean
+gh secret set ANDROID_KEY_PASSWORD
+```
+
+Cut a release with `git tag v0.1.0 && git push --tags`.
+
+In Obtainium, add an app with source URL `https://github.com/kevinher7/spend-bean`. It installs the APK from the latest release and picks up new tags.
+
+The local equivalent builds a release APK signed with the debug key, which needs no secrets:
+
+```bash
+APP_VERSION=0.1.0 npx expo prebuild --platform android --clean && cd android && ./gradlew assembleRelease
+```
+
+The APK lands in `android/app/build/outputs/apk/release/app-release.apk`.
+
 ## Structure
 
 ```
