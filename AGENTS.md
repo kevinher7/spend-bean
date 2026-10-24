@@ -30,7 +30,13 @@ The project uses React Native (Expo with a development build) to create the Andr
 npm run check         # typecheck, format check, lint and tests. Run before declaring a task done.
 npm run android:dev   # dev build on the phone over USB
 npm run format        # format with oxfmt
+npm run compose:up    # actual-server on :5006 and actual-http-api on :5007
+npm run seed          # seed an empty compose server, prints the sync ID
+npm run record-fixtures -- <sync-id>   # record GET responses into tests/fixtures/
+npm run compose:down  # stop compose and delete its data
 ```
+
+After recording fixtures, regenerate the goldens with `npx vitest run -u` and review the diff.
 
 ## Structure
 

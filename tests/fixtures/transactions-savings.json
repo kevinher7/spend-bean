@@ -1,0 +1,52 @@
+{
+  "data": [
+    {
+      "id": "00206a30-8a96-41db-b482-a57ae7dc6dfe",
+      "is_parent": false,
+      "is_child": false,
+      "parent_id": null,
+      "account": "882d3122-d106-472d-bc80-040f702ee7bb",
+      "category": null,
+      "amount": 50000000,
+      "payee": "be8a20e9-3408-4f1c-a038-fe1859dcf527",
+      "notes": null,
+      "date": "2026-10-24",
+      "imported_id": null,
+      "error": null,
+      "imported_payee": null,
+      "starting_balance_flag": true,
+      "transfer_id": null,
+      "sort_order": 1792829916987,
+      "cleared": true,
+      "reconciled": false,
+      "tombstone": false,
+      "schedule": null,
+      "raw_synced_data": null,
+      "subtransactions": []
+    },
+    {
+      "id": "ebd0110a-1612-4c4b-a41d-91e191eaf7d5",
+      "is_parent": false,
+      "is_child": false,
+      "parent_id": null,
+      "account": "882d3122-d106-472d-bc80-040f702ee7bb",
+      "category": null,
+      "amount": 2000000,
+      "payee": "48719551-0015-4fbc-9388-a61b52aa8ad4",
+      "notes": "To savings",
+      "date": "2026-10-05",
+      "imported_id": null,
+      "error": null,
+      "imported_payee": null,
+      "starting_balance_flag": false,
+      "transfer_id": "3492c1da-427e-4472-b73e-e0ac914ea6d3",
+      "sort_order": 1792829917009,
+      "cleared": false,
+      "reconciled": false,
+      "tombstone": false,
+      "schedule": null,
+      "raw_synced_data": null,
+      "subtransactions": []
+    }
+  ]
+}

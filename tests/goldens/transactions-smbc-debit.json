@@ -1,0 +1,58 @@
+[
+  {
+    "id": "3492c1da-427e-4472-b73e-e0ac914ea6d3",
+    "date": "2026-10-05",
+    "amount": -20000,
+    "categoryId": "42531ad2-a137-4a75-9581-ba261d3b6e76",
+    "isTransfer": true
+  },
+  {
+    "id": "ec657c1f-2268-43db-9f8e-c72f041420a2",
+    "date": "2026-10-04",
+    "amount": 1500,
+    "categoryId": "bbcf3105-2421-463f-a606-a3624c6ba75b",
+    "isTransfer": false
+  },
+  {
+    "id": "f4edae34-b037-4e40-b866-d5aa3f2aa56a",
+    "date": "2026-10-03",
+    "amount": -5000,
+    "categoryId": "789d0179-39ce-4e43-879a-ab652c26b2c7",
+    "isTransfer": false
+  },
+  {
+    "id": "fc6365b4-880d-4068-b751-50ab76d2a224",
+    "date": "2026-10-02",
+    "amount": -10000,
+    "categoryId": null,
+    "isTransfer": true
+  },
+  {
+    "id": "ade61a5d-bf74-490c-8765-788f1e223506",
+    "date": "2026-10-01",
+    "amount": -2800,
+    "categoryId": "bbcf3105-2421-463f-a606-a3624c6ba75b",
+    "isTransfer": false
+  },
+  {
+    "id": "cbb88949-e95e-4091-932d-32ad563c10dd",
+    "date": "2026-09-30",
+    "amount": -3400,
+    "categoryId": "42531ad2-a137-4a75-9581-ba261d3b6e76",
+    "isTransfer": false
+  },
+  {
+    "id": "50591b67-cd1e-42f8-8dc7-06c2e9bd5425",
+    "date": "2026-09-28",
+    "amount": -1200,
+    "categoryId": "bbcf3105-2421-463f-a606-a3624c6ba75b",
+    "isTransfer": false
+  },
+  {
+    "id": "1b5e3d12-12b7-41ac-94e4-a932ab0fc6ff",
+    "date": "2026-09-25",
+    "amount": 300000,
+    "categoryId": "3c1699a5-522a-435e-86dc-93d900a14f0e",
+    "isTransfer": false
+  }
+]
