@@ -6,7 +6,6 @@ import { Button, Text, TextInput, View } from "react-native";
 import { storageLayer } from "../core/adapters/storage.ts";
 import { type Settings, Storage } from "../core/contracts.ts";
 
-// The widget reads these on its next refresh (a tap or the periodic update).
 const load = Effect.gen(function* () {
   const storage = yield* Storage;
   return yield* storage.loadSettings;

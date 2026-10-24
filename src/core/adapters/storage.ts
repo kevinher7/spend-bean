@@ -51,8 +51,5 @@ export const storageLayer = Layer.succeed(Storage, {
       JSON.parse(json),
     );
     return summary;
-  }).pipe(
-    // A cache that cannot be read is the same as no cache.
-    Effect.catchTag("SchemaError", () => Effect.succeed(null)),
-  ),
+  }).pipe(Effect.catchTag("SchemaError", () => Effect.succeed(null))),
 });

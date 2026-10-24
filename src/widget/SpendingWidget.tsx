@@ -80,8 +80,6 @@ const Bar = ({
   );
 };
 
-// `stale` means the last refresh failed and these are the last good numbers.
-// No fragments: the widget library only understands its own elements.
 export const SpendingWidget = ({
   summary,
   stale,
@@ -124,8 +122,6 @@ export const SpendingWidget = ({
       )}
       {summary !== null && stale && (
         <TextWidget
-          // updatedAt is ISO with the Tokyo offset, so the clock time is
-          // already local.
           text={`updated ${summary.updatedAt.slice(5, 10)} ${summary.updatedAt.slice(11, 16)}`}
           style={{ fontSize: 11, color: "#757575", textAlign: "right" }}
         />

@@ -5,8 +5,6 @@ import type { Summary } from "../core/contracts.ts";
 import { AddWidget } from "../widget/AddWidget.tsx";
 import { SpendingWidget } from "../widget/SpendingWidget.tsx";
 
-// Dev-only screen. Renders the widgets in-app with sample data so layout
-// changes show up on hot reload instead of on the home screen.
 const base: Summary = {
   date: "2026-10-24",
   updatedAt: "2026-10-24T14:32:10.000+09:00",

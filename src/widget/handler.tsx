@@ -8,8 +8,6 @@ import { refresh } from "../core/program.ts";
 import { AddWidget } from "./AddWidget.tsx";
 import { SpendingWidget } from "./SpendingWidget.tsx";
 
-// Runs the refresh and falls back to the last good summary when it fails, so
-// the widget never shows an error in place of numbers.
 const loadSpending = () =>
   refresh.pipe(
     Effect.map((summary) => ({ summary, stale: false })),
@@ -36,7 +34,6 @@ export const widgetTaskHandler: WidgetTaskHandler = async (props) => {
   }
 
   if (props.widgetAction === "WIDGET_DELETED") return;
-  // Every other action (added, periodic update, resize, REFRESH tap) refetches.
   const { summary, stale } = await loadSpending();
   props.renderWidget(
     <SpendingWidget summary={summary} stale={stale} width={width} />,

@@ -39,8 +39,6 @@ const config: ExpoConfig = {
             name: "Spending",
             label: "Spending",
             description: "Today and this week against the budget",
-            // Fixed 4x2 cells. Some launchers report the wrong size for
-            // resizable widgets and crop the image.
             minWidth: "250dp",
             minHeight: "110dp",
             targetCellWidth: 4,
