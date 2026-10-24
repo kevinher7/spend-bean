@@ -1,7 +1,12 @@
 import { Effect, Schema } from "effect";
 import * as HttpClient from "effect/http/HttpClient";
 
-import type { Account, BudgetMonth, Settings, Transaction } from "../contracts";
+import type {
+  Account,
+  BudgetMonth,
+  Settings,
+  Transaction,
+} from "../contracts.ts";
 
 // Actual stores amounts x100, even for yen.
 const toYen = (amount: number) => amount / 100;

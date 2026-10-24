@@ -33,6 +33,7 @@ npm run format        # format with oxfmt
 npm run compose:up    # actual-server on :5006 and actual-http-api on :5007
 npm run seed          # seed an empty compose server, prints the sync ID
 npm run record-fixtures -- <sync-id>   # record GET responses into tests/fixtures/
+npm run summary -- <sync-id>   # run the program against compose and print the summary
 npm run compose:down  # stop compose and delete its data
 ```
 
@@ -56,6 +57,7 @@ src/
 - `core` runs without React. It never imports `react`, `react-native`, `react-native-android-widget`, `expo-router`, `widget/` or `app/`.
 - `widget/` and `app/` only share `core`. They never import each other.
 - The two adapters are independent from each other, and `spending.ts` does not use Effect.
+- Relative imports in `core` end in `.ts`, so Node scripts can load it without a build step.
 - oxlint enforces the import rules above (`.oxlintrc.json`). Do not loosen them to make an import work.
 
 ## Domain rules

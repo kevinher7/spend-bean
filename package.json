@@ -14,6 +14,7 @@
     "compose:down": "docker compose -f docker/docker-compose.yaml down -v",
     "seed": "node scripts/seed.mts",
     "record-fixtures": "node scripts/record-fixtures.mts",
+    "summary": "node scripts/summary.mts",
     "typecheck": "tsc",
     "lint": "oxlint --type-aware",
     "lint:fix": "oxlint --type-aware --fix",
@@ -23,11 +24,13 @@
     "check": "npm run typecheck && npm run format:check && npm run lint && npm test"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
     "effect": "^4.0.5",
     "expo": "~58.0.16",
     "expo-constants": "~58.0.12",
     "expo-linking": "~58.0.13",
     "expo-router": "~58.0.24",
+    "expo-secure-store": "~58.0.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.0",
