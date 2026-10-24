@@ -8,7 +8,6 @@ import {
 import { Storage, type Summary } from "./contracts.ts";
 import { summarize, weekOf } from "./spending.ts";
 
-// Asia/Tokyo has no daylight saving time, so a fixed offset is exact.
 const tokyoOffset = 9 * 60 * 60 * 1000;
 
 export const refresh = Effect.gen(function* () {
@@ -36,9 +35,7 @@ export const refresh = Effect.gen(function* () {
       { concurrency: "unbounded" },
     );
   }).pipe(
-    // Three 8 second attempts plus backoff stay inside the widget's 30 second
-    // task limit.
-    Effect.timeout("8 seconds"),
+    Effect.timeout("5 seconds"),
     Effect.retry({ times: 2, schedule: Schedule.exponential("500 millis") }),
   );
 
