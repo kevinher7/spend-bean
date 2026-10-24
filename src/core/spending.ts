@@ -84,8 +84,10 @@ export const summarize = (
         !incomeCategoryIds.has(transaction.categoryId)),
   );
   // Expenses are negative and refunds positive, so a refund reduces spending.
+  // `0 - sum` instead of `-sum` so an empty week is 0, not -0.
   const spentWhere = (predicate: (date: string) => boolean) =>
-    -spending
+    0 -
+    spending
       .filter((transaction) => predicate(transaction.date))
       .reduce((sum, transaction) => sum + transaction.amount, 0);
 

@@ -55,8 +55,13 @@ export class Storage extends Context.Service<
       Settings,
       MissingSettings | Cause.UnknownError
     >;
+    readonly saveSettings: (
+      settings: Settings,
+    ) => Effect.Effect<void, Cause.UnknownError>;
     readonly saveSummary: (
       summary: Summary,
     ) => Effect.Effect<void, Cause.UnknownError>;
+    // null until the first successful refresh.
+    readonly loadSummary: Effect.Effect<Summary | null, Cause.UnknownError>;
   }
 >()("spend-bean/Storage") {}
