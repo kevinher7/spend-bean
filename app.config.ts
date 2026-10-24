@@ -29,6 +29,8 @@ const config: ExpoConfig = {
     predictiveBackGestureEnabled: false,
   },
   plugins: [
+    // Kevin's phone is the only target, and it is arm64.
+    ["expo-build-properties", { android: { buildArchs: ["arm64-v8a"] } }],
     "expo-router",
     "expo-secure-store",
     [
