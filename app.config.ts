@@ -29,7 +29,16 @@ const config: ExpoConfig = {
     predictiveBackGestureEnabled: false,
   },
   plugins: [
-    ["expo-build-properties", { android: { buildArchs: ["arm64-v8a"] } }],
+    [
+      "expo-build-properties",
+      {
+        android: {
+          buildArchs: ["arm64-v8a"],
+          // R8 strips WorkManager's Room database, which the widget library loads by reflection.
+          enableMinifyInReleaseBuilds: false,
+        },
+      },
+    ],
     "expo-router",
     "expo-secure-store",
     [
