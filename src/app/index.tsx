@@ -1,34 +1,97 @@
-import { Effect, Schema } from "effect";
-import * as FetchHttpClient from "effect/http/FetchHttpClient";
-import * as HttpClient from "effect/http/HttpClient";
+import { Effect } from "effect";
+import { Link } from "expo-router";
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Button, Text, TextInput, View } from "react-native";
 
-// Placeholder until the real screens exist. It checks that an Effect
-// HttpClient request works on Hermes with Expo's native fetch.
-const Todo = Schema.Struct({ id: Schema.Number, title: Schema.String });
+import { storageLayer } from "../core/adapters/storage.ts";
+import { type Settings, Storage } from "../core/contracts.ts";
 
-const fetchTodo = Effect.gen(function* () {
-  const client = (yield* HttpClient.HttpClient).pipe(HttpClient.filterStatusOk);
-  const response = yield* client.get(
-    "https://jsonplaceholder.typicode.com/todos/1",
-  );
-  return yield* Schema.decodeUnknownEffect(Todo)(yield* response.json);
-}).pipe(Effect.timeout("10 seconds"), Effect.provide(FetchHttpClient.layer));
+const load = Effect.gen(function* () {
+  const storage = yield* Storage;
+  return yield* storage.loadSettings;
+}).pipe(
+  Effect.catchTag("MissingSettings", () =>
+    Effect.succeed({ serverUrl: "", apiKey: "", syncId: "" }),
+  ),
+  Effect.provide(storageLayer),
+);
+
+const save = (settings: Settings) =>
+  Effect.gen(function* () {
+    const storage = yield* Storage;
+    yield* storage.saveSettings(settings);
+  }).pipe(Effect.provide(storageLayer));
 
 export default function Index() {
-  const [result, setResult] = useState("Fetching...");
+  const [serverUrl, setServerUrl] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [syncId, setSyncId] = useState("");
+  const [status, setStatus] = useState("");
 
   useEffect(() => {
-    Effect.runPromise(fetchTodo).then(
-      (todo) => setResult(`OK: ${JSON.stringify(todo)}`),
-      (error: unknown) => setResult(`Failed: ${String(error)}`),
+    Effect.runFork(
+      load.pipe(
+        Effect.match({
+          onSuccess: (settings) => {
+            setServerUrl(settings.serverUrl);
+            setApiKey(settings.apiKey);
+            setSyncId(settings.syncId);
+          },
+          onFailure: (error) => setStatus(`Failed to load: ${String(error)}`),
+        }),
+      ),
     );
   }, []);
 
+  const onSave = () => {
+    Effect.runFork(
+      save({ serverUrl, apiKey, syncId }).pipe(
+        Effect.match({
+          onSuccess: () => setStatus("Saved"),
+          onFailure: (error) => setStatus(`Failed to save: ${String(error)}`),
+        }),
+      ),
+    );
+  };
+
+  const field = {
+    borderWidth: 1,
+    borderColor: "#BDBDBD",
+    borderRadius: 6,
+    padding: 8,
+  };
+
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <Text>{result}</Text>
+    <View style={{ flex: 1, padding: 16, gap: 12, justifyContent: "center" }}>
+      <Text>Server URL</Text>
+      <TextInput
+        style={field}
+        value={serverUrl}
+        onChangeText={setServerUrl}
+        autoCapitalize="none"
+        autoCorrect={false}
+        placeholder="https://actual-api.beanhaven.net"
+      />
+      <Text>API key</Text>
+      <TextInput
+        style={field}
+        value={apiKey}
+        onChangeText={setApiKey}
+        autoCapitalize="none"
+        autoCorrect={false}
+        secureTextEntry
+      />
+      <Text>Budget sync ID</Text>
+      <TextInput
+        style={field}
+        value={syncId}
+        onChangeText={setSyncId}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      <Button title="Save" onPress={onSave} />
+      <Text>{status}</Text>
+      {__DEV__ && <Link href="/preview">Widget preview</Link>}
     </View>
   );
 }

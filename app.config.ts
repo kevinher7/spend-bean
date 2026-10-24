@@ -28,7 +28,38 @@ const config: ExpoConfig = {
     },
     predictiveBackGestureEnabled: false,
   },
-  plugins: ["expo-router", "expo-secure-store"],
+  plugins: [
+    "expo-router",
+    "expo-secure-store",
+    [
+      "react-native-android-widget",
+      {
+        widgets: [
+          {
+            name: "Spending",
+            label: "Spending",
+            description: "Today and this week against the budget",
+            minWidth: "250dp",
+            minHeight: "110dp",
+            targetCellWidth: 4,
+            targetCellHeight: 2,
+            resizeMode: "none",
+            updatePeriodMillis: 30 * 60 * 1000,
+          },
+          {
+            name: "Add",
+            label: "Add transaction",
+            description: "Opens Spend Bean",
+            minWidth: "40dp",
+            minHeight: "40dp",
+            targetCellWidth: 1,
+            targetCellHeight: 1,
+            resizeMode: "none",
+          },
+        ],
+      },
+    ],
+  ],
 };
 
 export default config;

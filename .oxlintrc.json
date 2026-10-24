@@ -100,6 +100,12 @@
           }
         ]
       }
+    },
+    {
+      "files": ["src/app/preview.tsx"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
     }
   ]
 }
