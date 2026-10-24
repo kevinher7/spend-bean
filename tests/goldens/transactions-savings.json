@@ -1,0 +1,16 @@
+[
+  {
+    "id": "00206a30-8a96-41db-b482-a57ae7dc6dfe",
+    "date": "2026-10-24",
+    "amount": 500000,
+    "categoryId": null,
+    "isTransfer": false
+  },
+  {
+    "id": "ebd0110a-1612-4c4b-a41d-91e191eaf7d5",
+    "date": "2026-10-05",
+    "amount": 20000,
+    "categoryId": null,
+    "isTransfer": true
+  }
+]

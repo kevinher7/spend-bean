@@ -1,0 +1,85 @@
+{
+  "data": {
+    "month": "2026-10",
+    "incomeAvailable": 24000000,
+    "lastMonthOverspent": 0,
+    "forNextMonth": 0,
+    "totalBudgeted": -6200000,
+    "toBudget": 17800000,
+    "fromLastMonth": 24000000,
+    "totalIncome": 0,
+    "totalSpent": -2715000,
+    "totalBalance": 9025000,
+    "categoryGroups": [
+      {
+        "id": "7af114fb-5865-4836-bfc2-9b774ed513a0",
+        "name": "Living",
+        "is_income": false,
+        "hidden": false,
+        "categories": [
+          {
+            "id": "789d0179-39ce-4e43-879a-ab652c26b2c7",
+            "name": "Transport",
+            "is_income": false,
+            "hidden": false,
+            "group_id": "7af114fb-5865-4836-bfc2-9b774ed513a0",
+            "budgeted": 800000,
+            "spent": -500000,
+            "balance": 1300000,
+            "carryover": false
+          },
+          {
+            "id": "42531ad2-a137-4a75-9581-ba261d3b6e76",
+            "name": "Daily",
+            "is_income": false,
+            "hidden": false,
+            "group_id": "7af114fb-5865-4836-bfc2-9b774ed513a0",
+            "budgeted": 1200000,
+            "spent": -2000000,
+            "balance": -140000,
+            "carryover": false
+          },
+          {
+            "id": "bbcf3105-2421-463f-a606-a3624c6ba75b",
+            "name": "Food",
+            "is_income": false,
+            "hidden": false,
+            "group_id": "7af114fb-5865-4836-bfc2-9b774ed513a0",
+            "budgeted": 4200000,
+            "spent": -215000,
+            "balance": 7865000,
+            "carryover": false
+          }
+        ],
+        "budgeted": 6200000,
+        "spent": -2715000,
+        "balance": 9025000
+      },
+      {
+        "id": "2E1F5BDB-209B-43F9-AF2C-3CE28E380C00",
+        "name": "Income",
+        "is_income": true,
+        "hidden": false,
+        "categories": [
+          {
+            "id": "3c1699a5-522a-435e-86dc-93d900a14f0e",
+            "name": "Income",
+            "is_income": true,
+            "hidden": false,
+            "group_id": "2E1F5BDB-209B-43F9-AF2C-3CE28E380C00",
+            "received": 0
+          },
+          {
+            "id": "506e8d9d-7ed0-4397-84e4-07a9185dc6b2",
+            "name": "Starting Balances",
+            "is_income": true,
+            "hidden": false,
+            "group_id": "2E1F5BDB-209B-43F9-AF2C-3CE28E380C00",
+            "received": 0
+          }
+        ],
+        "received": 0
+      }
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+name: spend-bean
+
+# Development only. The password and API key below are not secrets.
+services:
+  actual:
+    image: actualbudget/actual-server:26.10.0-alpine
+
+    ports:
+      - target: 5006
+        host_ip: 127.0.0.1
+        published: 5006
+
+    volumes:
+      - actual-data:/data
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5006/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  actual-http-api:
+    # Keep in step with the actual-server version above.
+    image: jhonderson/actual-http-api:26.10.0
+
+    depends_on:
+      actual:
+        condition: service_healthy
+
+    environment:
+      ACTUAL_SERVER_URL: http://actual:5006/
+      ACTUAL_SERVER_PASSWORD: spend-bean
+      API_KEY: spend-bean-dev
+      # Matches the server, which runs without the experimental routes.
+      EXPERIMENTAL_OPERATIONS_ENABLED: "false"
+
+    # `adb reverse tcp:5007 tcp:5007` reaches this from the phone.
+    ports:
+      - target: 5007
+        host_ip: 127.0.0.1
+        published: 5007
+
+    volumes:
+      - actual-http-api-data:/data
+
+volumes:
+  actual-data:
+  actual-http-api-data:

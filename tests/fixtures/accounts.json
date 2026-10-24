@@ -1,0 +1,25 @@
+{
+  "data": [
+    {
+      "id": "92da5f97-a033-43e2-9719-a00e73e957b0",
+      "name": "SMBC Debit",
+      "offbudget": false,
+      "closed": false,
+      "account_group_id": null
+    },
+    {
+      "id": "882d3122-d106-472d-bc80-040f702ee7bb",
+      "name": "Savings",
+      "offbudget": true,
+      "closed": false,
+      "account_group_id": null
+    },
+    {
+      "id": "982c908a-a659-4311-b39b-8d774bc4caaf",
+      "name": "Cash",
+      "offbudget": false,
+      "closed": false,
+      "account_group_id": null
+    }
+  ]
+}
