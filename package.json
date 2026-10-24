@@ -19,7 +19,7 @@
     "lint:fix": "oxlint --type-aware --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "test": "vitest run",
+    "test": "vitest run --dir tests --passWithNoTests",
     "check": "npm run typecheck && npm run format:check && npm run lint && npm test"
   },
   "dependencies": {

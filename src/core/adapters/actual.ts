@@ -42,43 +42,6 @@ const TransactionsResponse = Schema.Struct({
   ),
 });
 
-export const decodeAccounts = (body: unknown) =>
-  Schema.decodeUnknownEffect(AccountsResponse)(body).pipe(
-    Effect.map(({ data }) =>
-      data.map((account): Account => ({
-        id: account.id,
-        name: account.name,
-        onBudget: !account.offbudget,
-        closed: account.closed,
-      })),
-    ),
-  );
-
-export const decodeBudgetMonth = (body: unknown) =>
-  Schema.decodeUnknownEffect(BudgetMonthResponse)(body).pipe(
-    Effect.map(({ data }): BudgetMonth => ({
-      month: data.month,
-      // Actual reports the month's total budgeted as a negative number.
-      budgeted: toYen(-data.totalBudgeted),
-      incomeCategoryIds: data.categoryGroups
-        .filter((group) => group.is_income)
-        .flatMap((group) => group.categories.map((category) => category.id)),
-    })),
-  );
-
-export const decodeTransactions = (body: unknown) =>
-  Schema.decodeUnknownEffect(TransactionsResponse)(body).pipe(
-    Effect.map(({ data }) =>
-      data.map((transaction): Transaction => ({
-        id: transaction.id,
-        date: transaction.date,
-        amount: toYen(transaction.amount),
-        categoryId: transaction.category,
-        isTransfer: transaction.transfer_id !== null,
-      })),
-    ),
-  );
-
 const get = (
   settings: Settings,
   path: string,
@@ -96,10 +59,30 @@ const get = (
   });
 
 export const getAccounts = (settings: Settings) =>
-  get(settings, "/accounts").pipe(Effect.flatMap(decodeAccounts));
+  get(settings, "/accounts").pipe(
+    Effect.flatMap(Schema.decodeUnknownEffect(AccountsResponse)),
+    Effect.map(({ data }) =>
+      data.map((account): Account => ({
+        id: account.id,
+        name: account.name,
+        onBudget: !account.offbudget,
+        closed: account.closed,
+      })),
+    ),
+  );
 
 export const getBudgetMonth = (settings: Settings, month: string) =>
-  get(settings, `/months/${month}`).pipe(Effect.flatMap(decodeBudgetMonth));
+  get(settings, `/months/${month}`).pipe(
+    Effect.flatMap(Schema.decodeUnknownEffect(BudgetMonthResponse)),
+    Effect.map(({ data }): BudgetMonth => ({
+      month: data.month,
+      // Actual reports the month's total budgeted as a negative number.
+      budgeted: toYen(-data.totalBudgeted),
+      incomeCategoryIds: data.categoryGroups
+        .filter((group) => group.is_income)
+        .flatMap((group) => group.categories.map((category) => category.id)),
+    })),
+  );
 
 export const getTransactions = (
   settings: Settings,
@@ -108,4 +91,15 @@ export const getTransactions = (
 ) =>
   get(settings, `/accounts/${accountId}/transactions`, {
     since_date: sinceDate,
-  }).pipe(Effect.flatMap(decodeTransactions));
+  }).pipe(
+    Effect.flatMap(Schema.decodeUnknownEffect(TransactionsResponse)),
+    Effect.map(({ data }) =>
+      data.map((transaction): Transaction => ({
+        id: transaction.id,
+        date: transaction.date,
+        amount: toYen(transaction.amount),
+        categoryId: transaction.category,
+        isTransfer: transaction.transfer_id !== null,
+      })),
+    ),
+  );
