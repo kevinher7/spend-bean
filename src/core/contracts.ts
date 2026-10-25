@@ -10,6 +10,11 @@ export type Settings = {
   readonly syncId: string;
 };
 
+export type Budget = {
+  readonly syncId: string;
+  readonly name: string;
+};
+
 export type Account = {
   readonly id: string;
   readonly name: string;

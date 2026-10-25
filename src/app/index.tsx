@@ -1,10 +1,12 @@
 import { Effect } from "effect";
+import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import { Link } from "expo-router";
 import { useEffect, useState } from "react";
-import { Button, Text, TextInput, View } from "react-native";
+import { Button, Pressable, Text, TextInput, View } from "react-native";
 
+import { getBudgets } from "../core/adapters/actual.ts";
 import { storageLayer } from "../core/adapters/storage.ts";
-import { type Settings, Storage } from "../core/contracts.ts";
+import { type Budget, type Settings, Storage } from "../core/contracts.ts";
 
 const load = Effect.gen(function* () {
   const storage = yield* Storage;
@@ -26,6 +28,7 @@ export default function Index() {
   const [serverUrl, setServerUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [syncId, setSyncId] = useState("");
+  const [budgets, setBudgets] = useState<ReadonlyArray<Budget>>([]);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
@@ -43,12 +46,40 @@ export default function Index() {
     );
   }, []);
 
-  const onSave = () => {
+  const saveBudget = (url: string, budget: Budget) => {
     Effect.runFork(
-      save({ serverUrl, apiKey, syncId }).pipe(
+      save({ serverUrl: url, apiKey, syncId: budget.syncId }).pipe(
         Effect.match({
-          onSuccess: () => setStatus("Saved"),
+          onSuccess: () => {
+            setSyncId(budget.syncId);
+            setStatus(`Saved. Using ${budget.name}.`);
+          },
           onFailure: (error) => setStatus(`Failed to save: ${String(error)}`),
+        }),
+      ),
+    );
+  };
+
+  const onSave = () => {
+    const url = serverUrl.trim().replace(/\/+$/, "");
+    setServerUrl(url);
+    setStatus("Connecting...");
+    Effect.runFork(
+      getBudgets({ serverUrl: url, apiKey }).pipe(
+        Effect.provide(FetchHttpClient.layer),
+        Effect.match({
+          onSuccess: (found) => {
+            setBudgets(found);
+            const budget =
+              found.find((candidate) => candidate.syncId === syncId) ??
+              (found.length === 1 ? found[0] : undefined);
+            if (budget) saveBudget(url, budget);
+            else if (found.length === 0)
+              setStatus("The server has no budgets.");
+            else setStatus("Pick a budget.");
+          },
+          onFailure: (error) =>
+            setStatus(`Failed to connect: ${String(error)}`),
         }),
       ),
     );
@@ -70,7 +101,8 @@ export default function Index() {
         onChangeText={setServerUrl}
         autoCapitalize="none"
         autoCorrect={false}
-        placeholder="https://actual-api.beanhaven.net"
+        keyboardType="url"
+        placeholder="https://actual-api.example.com"
       />
       <Text>API key</Text>
       <TextInput
@@ -81,15 +113,20 @@ export default function Index() {
         autoCorrect={false}
         secureTextEntry
       />
-      <Text>Budget sync ID</Text>
-      <TextInput
-        style={field}
-        value={syncId}
-        onChangeText={setSyncId}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
       <Button title="Save" onPress={onSave} />
+      {budgets.length > 1 &&
+        budgets.map((budget) => (
+          <Pressable
+            key={budget.syncId}
+            style={[
+              field,
+              budget.syncId === syncId && { borderColor: "#2E7D32" },
+            ]}
+            onPress={() => saveBudget(serverUrl, budget)}
+          >
+            <Text>{budget.name}</Text>
+          </Pressable>
+        ))}
       <Text>{status}</Text>
       {__DEV__ && <Link href="/preview">Widget preview</Link>}
     </View>
