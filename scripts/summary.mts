@@ -3,7 +3,7 @@
 import { Effect } from "effect";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
 
-import { Storage } from "../src/core/contracts.ts";
+import { type Settings, Storage } from "../src/core/contracts.ts";
 import { refresh } from "../src/core/program.ts";
 
 const syncId = process.argv[2];
@@ -11,10 +11,11 @@ if (!syncId) throw new Error("Usage: node scripts/summary.mts <sync-id>");
 
 const summary = await refresh.pipe(
   Effect.provideService(Storage, {
-    loadSettings: Effect.succeed({
+    loadSettings: Effect.succeed<Settings>({
       serverUrl: "http://localhost:5007",
       apiKey: "spend-bean-dev",
       syncId,
+      theme: "system",
     }),
     saveSettings: () => Effect.void,
     saveSummary: () => Effect.void,

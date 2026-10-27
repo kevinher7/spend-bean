@@ -1,101 +1,221 @@
-import { FlexWidget, SvgWidget, TextWidget } from "react-native-android-widget";
+import { FlexWidget, TextWidget } from "react-native-android-widget";
 
 import type { Spending, Summary } from "../core/contracts.ts";
-
-const green = "#2E7D32";
-const red = "#C62828";
-const track = "#E0E0E0";
-const ink = "#212121";
-const muted = "#757575";
-
-// Material's "refresh" icon. A tap anywhere on the widget refreshes it, the
-// icon only makes that visible.
-const refreshIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="${muted}" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`;
+import type { Palette } from "../core/theme.ts";
 
 const yen = (amount: number) => `¥${Math.round(amount).toLocaleString("en")}`;
 
+const isOver = ({ allotted, spent }: Spending) => spent > allotted;
+
+const ratio = ({ allotted, spent }: Spending) =>
+  allotted === 0 ? (spent > 0 ? 1 : 0) : spent / allotted;
+
 const Bar = ({
-  label,
   spending,
-  width,
+  pace,
+  height,
+  palette,
 }: {
-  label: string;
   spending: Spending;
-  width: number;
+  pace: number | null;
+  height: number;
+  palette: Palette;
 }) => {
-  const over = spending.spent > spending.allotted;
-  const ratio =
-    spending.allotted === 0 ? 1 : spending.spent / spending.allotted;
-  const fillWidth = Math.round(Math.min(1, Math.max(0, ratio)) * width);
-  const fits = fillWidth >= 56;
+  const lit = Math.round(Math.min(1, ratio(spending)) * 10);
+  const fill = (pace === null ? isOver(spending) : ratio(spending) > pace)
+    ? palette.error
+    : palette.primary;
+  const paceSegments = pace === null ? 0 : Math.round(pace * 10);
 
   return (
-    <FlexWidget style={{ width, flexDirection: "column", flexGap: 2 }}>
-      <FlexWidget
-        style={{
-          width,
-          flexDirection: "row",
-          justifyContent: "space-between",
-        }}
-      >
-        <TextWidget text={label} style={{ fontSize: 13, color: ink }} />
-        <TextWidget
-          text={yen(spending.allotted)}
-          style={{ fontSize: 13, color: ink, fontWeight: "bold" }}
-        />
-      </FlexWidget>
-      <FlexWidget
-        style={{
-          width,
-          height: 22,
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: track,
-          borderRadius: 11,
-          overflow: "hidden",
-        }}
-      >
+    <FlexWidget style={{ flex: 1, height, flexDirection: "row", flexGap: 3 }}>
+      {Array.from({ length: 10 }, (_, index) => (
         <FlexWidget
+          key={index}
           style={{
-            width: fillWidth,
-            height: 22,
-            backgroundColor: over ? red : green,
-            borderRadius: 11,
-            justifyContent: "flex-end",
-            alignItems: "center",
-            flexDirection: "row",
-            paddingRight: 8,
+            flex: 1,
+            height,
+            borderRadius: 4,
+            backgroundColor:
+              index < lit
+                ? fill
+                : index < paceSegments
+                  ? palette.primaryContainer
+                  : palette.outlineVariant,
           }}
-        >
-          {fits && (
-            <TextWidget
-              text={yen(spending.spent)}
-              style={{ fontSize: 12, color: "#FFFFFF", fontWeight: "bold" }}
-            />
-          )}
-        </FlexWidget>
-        {!fits && (
-          <TextWidget
-            text={yen(spending.spent)}
-            style={{ fontSize: 12, color: ink, marginLeft: 6 }}
-          />
-        )}
-      </FlexWidget>
+        />
+      ))}
     </FlexWidget>
   );
 };
 
+const Label = ({ text, palette }: { text: string; palette: Palette }) => (
+  <TextWidget
+    text={text}
+    style={{
+      fontSize: 12,
+      fontWeight: "bold",
+      letterSpacing: 1.5,
+      color: palette.onSurfaceVariant,
+    }}
+  />
+);
+
+const Left = ({
+  spending,
+  fontSize,
+  palette,
+}: {
+  spending: Spending;
+  fontSize: number;
+  palette: Palette;
+}) => (
+  <TextWidget
+    text={`${isOver(spending) ? "−" : ""}${yen(Math.abs(spending.allotted - spending.spent))}`}
+    style={{
+      fontSize,
+      fontWeight: "bold",
+      color: isOver(spending) ? palette.error : palette.onSurface,
+    }}
+  />
+);
+
+const SquareUnit = ({
+  label,
+  spending,
+  pace,
+  fontSize,
+  height,
+  palette,
+}: {
+  label: string;
+  spending: Spending;
+  pace: number | null;
+  fontSize: number;
+  height: number;
+  palette: Palette;
+}) => (
+  <FlexWidget
+    style={{ width: "match_parent", flexDirection: "column", flexGap: 6 }}
+  >
+    <FlexWidget
+      style={{
+        width: "match_parent",
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <Label text={label} palette={palette} />
+      <Left spending={spending} fontSize={fontSize} palette={palette} />
+    </FlexWidget>
+    <FlexWidget style={{ width: "match_parent", flexDirection: "row" }}>
+      <Bar spending={spending} pace={pace} height={height} palette={palette} />
+    </FlexWidget>
+  </FlexWidget>
+);
+
+const WideRow = ({
+  label,
+  spending,
+  pace,
+  palette,
+}: {
+  label: string;
+  spending: Spending;
+  pace: number | null;
+  palette: Palette;
+}) => (
+  <FlexWidget
+    style={{
+      width: "match_parent",
+      flexDirection: "row",
+      alignItems: "center",
+      flexGap: 8,
+    }}
+  >
+    <FlexWidget style={{ width: 54 }}>
+      <Label text={label} palette={palette} />
+    </FlexWidget>
+    <Bar spending={spending} pace={pace} height={18} palette={palette} />
+    <FlexWidget
+      style={{ width: 88, flexDirection: "row", justifyContent: "flex-end" }}
+    >
+      <Left spending={spending} fontSize={18} palette={palette} />
+    </FlexWidget>
+  </FlexWidget>
+);
+
 export const SpendingWidget = ({
   summary,
   stale,
-  width,
+  palette,
+  size,
 }: {
   summary: Summary | null;
   stale: boolean;
-  width: number;
+  palette: Palette;
+  size: "square" | "wide";
 }) => {
-  const padding = 12;
-  const inner = width - padding * 2;
+  // space-evenly puts a spacer around every child, including a `false` one,
+  // so the rows are built as a flat array with nothing hidden in it.
+  const rows =
+    summary === null
+      ? [
+          <TextWidget
+            key="message"
+            text={
+              stale ? "Could not reach the server" : "Open Spend Bean to set up"
+            }
+            style={{ fontSize: 14, color: palette.onSurface }}
+          />,
+        ]
+      : size === "square"
+        ? [
+            <SquareUnit
+              key="today"
+              label="TODAY"
+              spending={summary.daily}
+              pace={null}
+              fontSize={24}
+              height={22}
+              palette={palette}
+            />,
+            <SquareUnit
+              key="week"
+              label="WEEK"
+              spending={summary.weekly}
+              pace={summary.pace}
+              fontSize={20}
+              height={14}
+              palette={palette}
+            />,
+            ...(stale
+              ? [
+                  <TextWidget
+                    key="updated"
+                    text={`updated ${summary.updatedAt.slice(5, 10)} ${summary.updatedAt.slice(11, 16)}`}
+                    style={{ fontSize: 10, color: palette.onSurfaceVariant }}
+                  />,
+                ]
+              : []),
+          ]
+        : [
+            <WideRow
+              key="today"
+              label="TODAY"
+              spending={summary.daily}
+              pace={null}
+              palette={palette}
+            />,
+            <WideRow
+              key="week"
+              label="WEEK"
+              spending={summary.weekly}
+              pace={summary.pace}
+              palette={palette}
+            />,
+          ];
 
   return (
     <FlexWidget
@@ -104,44 +224,14 @@ export const SpendingWidget = ({
         width: "match_parent",
         height: "match_parent",
         flexDirection: "column",
-        justifyContent: "center",
-        flexGap: 8,
-        padding,
-        backgroundColor: "#FFFFFF",
-        borderRadius: 16,
+        justifyContent: "space-evenly",
+        backgroundColor: palette.surface,
+        borderRadius: 24,
+        paddingHorizontal: 16,
+        paddingVertical: size === "square" ? 8 : 4,
       }}
     >
-      {summary === null && (
-        <TextWidget
-          text={
-            stale ? "Could not reach the server" : "Open Spend Bean to set up"
-          }
-          style={{ fontSize: 14, color: ink }}
-        />
-      )}
-      {summary !== null && (
-        <Bar label="Daily" spending={summary.daily} width={inner} />
-      )}
-      {summary !== null && (
-        <Bar label="Weekly" spending={summary.weekly} width={inner} />
-      )}
-      <FlexWidget
-        style={{
-          width: inner,
-          flexDirection: "row",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          flexGap: 4,
-        }}
-      >
-        {summary !== null && stale && (
-          <TextWidget
-            text={`updated ${summary.updatedAt.slice(5, 10)} ${summary.updatedAt.slice(11, 16)}`}
-            style={{ fontSize: 11, color: muted }}
-          />
-        )}
-        <SvgWidget svg={refreshIcon} style={{ width: 16, height: 16 }} />
-      </FlexWidget>
+      {rows}
     </FlexWidget>
   );
 };
