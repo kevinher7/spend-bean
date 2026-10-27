@@ -14,7 +14,7 @@ const config: ExpoConfig = {
   version,
   orientation: "portrait",
   icon: "./assets/icon.png",
-  userInterfaceStyle: "light",
+  userInterfaceStyle: "automatic",
   android: {
     // The dev build gets its own ID so it installs next to the Obtainium one.
     package: isDev ? "com.kevinher7.spendbean.dev" : "com.kevinher7.spendbean",
@@ -41,6 +41,7 @@ const config: ExpoConfig = {
     ],
     "expo-router",
     "expo-secure-store",
+    "expo-system-ui",
     [
       "react-native-android-widget",
       {

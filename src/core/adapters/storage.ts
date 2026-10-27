@@ -22,15 +22,27 @@ const SummarySchema = Schema.Struct({
   pace: Schema.Number,
 });
 
+export const loadTheme = Effect.tryPromise(() =>
+  AsyncStorage.getItem("theme"),
+).pipe(
+  Effect.map((theme): Settings["theme"] =>
+    theme === "bean" ? "bean" : "system",
+  ),
+);
+
+export const saveTheme = (theme: Settings["theme"]) =>
+  Effect.tryPromise(() => AsyncStorage.setItem("theme", theme));
+
 export const storageLayer = Layer.succeed(Storage, {
   loadSettings: Effect.gen(function* () {
-    const [serverUrl, syncId, theme, apiKey] = yield* Effect.tryPromise(() =>
-      Promise.all([
-        AsyncStorage.getItem("serverUrl"),
-        AsyncStorage.getItem("syncId"),
-        AsyncStorage.getItem("theme"),
-        SecureStore.getItemAsync("apiKey"),
-      ]),
+    const [serverUrl, syncId, budgetName, apiKey] = yield* Effect.tryPromise(
+      () =>
+        Promise.all([
+          AsyncStorage.getItem("serverUrl"),
+          AsyncStorage.getItem("syncId"),
+          AsyncStorage.getItem("budgetName"),
+          SecureStore.getItemAsync("apiKey"),
+        ]),
     );
     if (serverUrl === null || syncId === null || apiKey === null) {
       return yield* new MissingSettings();
@@ -39,19 +51,36 @@ export const storageLayer = Layer.succeed(Storage, {
       serverUrl,
       syncId,
       apiKey,
-      theme: theme === "bean" ? "bean" : "system",
+      budgetName: budgetName ?? syncId,
+      theme: yield* loadTheme,
     };
     return settings;
   }),
   saveSettings: (settings) =>
-    Effect.tryPromise(() =>
-      Promise.all([
+    Effect.tryPromise(async () => {
+      const [serverUrl, syncId, apiKey] = await Promise.all([
+        AsyncStorage.getItem("serverUrl"),
+        AsyncStorage.getItem("syncId"),
+        SecureStore.getItemAsync("apiKey"),
+      ]);
+      if (
+        serverUrl !== settings.serverUrl ||
+        syncId !== settings.syncId ||
+        apiKey !== settings.apiKey
+      ) {
+        await AsyncStorage.removeItem("summary");
+      }
+      await Promise.all([
         AsyncStorage.setItem("serverUrl", settings.serverUrl),
         AsyncStorage.setItem("syncId", settings.syncId),
+        AsyncStorage.setItem(
+          "budgetName",
+          settings.budgetName ?? settings.syncId,
+        ),
         AsyncStorage.setItem("theme", settings.theme),
         SecureStore.setItemAsync("apiKey", settings.apiKey),
-      ]),
-    ).pipe(Effect.asVoid),
+      ]);
+    }),
   saveSummary: (summary) =>
     Effect.tryPromise(() =>
       AsyncStorage.setItem("summary", JSON.stringify(summary)),

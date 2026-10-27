@@ -2,6 +2,8 @@
 import "expo-router/entry";
 import { registerWidgetTaskHandler } from "react-native-android-widget";
 
-import { widgetTaskHandler } from "./widget/handler.tsx";
+import { registerWidgetUpdater } from "./core/widget-updates.ts";
+import { updateSpendingWidgets, widgetTaskHandler } from "./widget/handler.tsx";
 
+registerWidgetUpdater(updateSpendingWidgets);
 registerWidgetTaskHandler(widgetTaskHandler);
