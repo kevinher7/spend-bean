@@ -3,8 +3,9 @@ import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import type { WidgetTaskHandler } from "react-native-android-widget";
 
 import { storageLayer } from "../core/adapters/storage.ts";
-import { Storage } from "../core/contracts.ts";
+import { type Settings, Storage } from "../core/contracts.ts";
 import { refresh } from "../core/program.ts";
+import { bean, night, paper } from "../core/theme.ts";
 import { AddWidget } from "./AddWidget.tsx";
 import { SpendingWidget } from "./SpendingWidget.tsx";
 
@@ -25,8 +26,18 @@ const loadSpending = () =>
     Effect.runPromise,
   );
 
+const loadTheme = () =>
+  Effect.gen(function* () {
+    const storage = yield* Storage;
+    return (yield* storage.loadSettings).theme;
+  }).pipe(
+    Effect.catch(() => Effect.succeed<Settings["theme"]>("system")),
+    Effect.provide(storageLayer),
+    Effect.runPromise,
+  );
+
 export const widgetTaskHandler: WidgetTaskHandler = async (props) => {
-  const { widgetName, width } = props.widgetInfo;
+  const { widgetName } = props.widgetInfo;
 
   if (widgetName === "Add") {
     props.renderWidget(<AddWidget />);
@@ -34,8 +45,29 @@ export const widgetTaskHandler: WidgetTaskHandler = async (props) => {
   }
 
   if (props.widgetAction === "WIDGET_DELETED") return;
-  const { summary, stale } = await loadSpending();
-  props.renderWidget(
-    <SpendingWidget summary={summary} stale={stale} width={width} />,
-  );
+  const [{ summary, stale }, theme] = await Promise.all([
+    loadSpending(),
+    loadTheme(),
+  ]);
+  const size = widgetName === "SpendingWide" ? "wide" : "square";
+  // The library wires clicks from the light tree, so both must have the same
+  // structure.
+  props.renderWidget({
+    light: (
+      <SpendingWidget
+        summary={summary}
+        stale={stale}
+        palette={theme === "bean" ? bean : paper}
+        size={size}
+      />
+    ),
+    dark: (
+      <SpendingWidget
+        summary={summary}
+        stale={stale}
+        palette={theme === "bean" ? bean : night}
+        size={size}
+      />
+    ),
+  });
 };

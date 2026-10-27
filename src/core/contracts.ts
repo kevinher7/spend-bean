@@ -8,6 +8,8 @@ export type Settings = {
   readonly serverUrl: string;
   readonly apiKey: string;
   readonly syncId: string;
+  // "system" is Paper in light mode and Night in dark mode.
+  readonly theme: "system" | "bean";
 };
 
 export type Budget = {
@@ -47,6 +49,9 @@ export type Summary = {
   readonly updatedAt: string;
   readonly daily: Spending;
   readonly weekly: Spending;
+  // The fraction of the weekly budget that should be used by the end of
+  // today: 1/7 on Monday, 1 on Sunday.
+  readonly pace: number;
 };
 
 export class MissingSettings extends Data.TaggedError("MissingSettings") {}

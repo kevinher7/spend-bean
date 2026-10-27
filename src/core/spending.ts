@@ -57,6 +57,8 @@ export const weekOf = (date: string) => {
   return { monday, sunday: addDays(monday, 6) };
 };
 
+export const weekPace = (date: string) => (weekday(date) + 1) / 7;
+
 export const summarize = (
   today: string,
   months: ReadonlyArray<BudgetMonth>,
@@ -107,5 +109,6 @@ export const summarize = (
       allotted: Math.round(weeklyAllotted),
       spent: spentWhere((date) => date >= monday && date <= sunday),
     },
+    pace: weekPace(today),
   };
 };
