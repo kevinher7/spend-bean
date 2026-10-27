@@ -39,21 +39,34 @@ const BudgetMonthResponse = Schema.Struct({
     totalBudgeted: Schema.Number,
     categoryGroups: Schema.Array(
       Schema.Struct({
+        name: Schema.String,
         is_income: Schema.Boolean,
-        categories: Schema.Array(Schema.Struct({ id: Schema.String })),
+        categories: Schema.Array(
+          Schema.Struct({
+            id: Schema.String,
+            name: Schema.String,
+            budgeted: Schema.optionalKey(Schema.Number),
+          }),
+        ),
       }),
     ),
   }),
 });
 
+const TransactionFields = Schema.Struct({
+  id: Schema.String,
+  date: Schema.String,
+  amount: Schema.Number,
+  category: Schema.NullOr(Schema.String),
+  transfer_id: Schema.NullOr(Schema.String),
+});
+
 const TransactionsResponse = Schema.Struct({
   data: Schema.Array(
     Schema.Struct({
-      id: Schema.String,
-      date: Schema.String,
-      amount: Schema.Number,
-      category: Schema.NullOr(Schema.String),
-      transfer_id: Schema.NullOr(Schema.String),
+      ...TransactionFields.fields,
+      is_parent: Schema.Boolean,
+      subtransactions: Schema.Array(TransactionFields),
     }),
   ),
 });
@@ -111,6 +124,16 @@ export const getBudgetMonth = (settings: Settings, month: string) =>
       incomeCategoryIds: data.categoryGroups
         .filter((group) => group.is_income)
         .flatMap((group) => group.categories.map((category) => category.id)),
+      categories: data.categoryGroups
+        .filter((group) => !group.is_income)
+        .flatMap((group) =>
+          group.categories.map((category) => ({
+            id: category.id,
+            name: category.name,
+            group: group.name,
+            budgeted: toYen(category.budgeted ?? 0),
+          })),
+        ),
     })),
   );
 
@@ -126,12 +149,16 @@ export const getTransactions = (
   ).pipe(
     Effect.flatMap(Schema.decodeUnknownEffect(TransactionsResponse)),
     Effect.map(({ data }) =>
-      data.map((transaction): Transaction => ({
-        id: transaction.id,
-        date: transaction.date,
-        amount: toYen(transaction.amount),
-        categoryId: transaction.category,
-        isTransfer: transaction.transfer_id !== null,
-      })),
+      data
+        .flatMap((transaction) =>
+          transaction.is_parent ? transaction.subtransactions : [transaction],
+        )
+        .map((transaction): Transaction => ({
+          id: transaction.id,
+          date: transaction.date,
+          amount: toYen(transaction.amount),
+          categoryId: transaction.category,
+          isTransfer: transaction.transfer_id !== null,
+        })),
     ),
   );

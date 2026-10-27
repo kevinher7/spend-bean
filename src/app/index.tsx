@@ -1,239 +1,156 @@
-import { Effect, Predicate } from "effect";
+import { Effect, Layer } from "effect";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
-import { Link } from "expo-router";
-import { useEffect, useState } from "react";
+import { Link, router, useFocusEffect } from "expo-router";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   useColorScheme,
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-import { getBudgets } from "../core/adapters/actual.ts";
+import { loadTheme, storageLayer } from "../core/adapters/storage.ts";
 import {
-  loadTheme,
-  saveTheme,
-  storageLayer,
-} from "../core/adapters/storage.ts";
-import { type Budget, type Settings, Storage } from "../core/contracts.ts";
-import { bean, night, paper } from "../core/theme.ts";
-import { updateWidgets } from "../core/widget-updates.ts";
+  type Settings,
+  type Spending,
+  Storage,
+  type Summary,
+} from "../core/contracts.ts";
+import { refresh } from "../core/program.ts";
+import { bean, night, paper, type Palette } from "../core/theme.ts";
 
-const load = Effect.gen(function* () {
-  const storage = yield* Storage;
-  return yield* storage.loadSettings;
-}).pipe(
-  Effect.catchTag("MissingSettings", () => Effect.succeed(null)),
-  Effect.provide(storageLayer),
-);
+const yen = (amount: number) => `¥${Math.round(amount).toLocaleString("en")}`;
 
-export default function Index() {
+function SpendingBar({
+  spending,
+  pace = 0,
+  palette,
+}: {
+  spending: Spending;
+  pace?: number;
+  palette: Palette;
+}) {
+  const ratio =
+    spending.allotted <= 0
+      ? spending.spent > 0
+        ? 1
+        : 0
+      : spending.spent / spending.allotted;
+  const lit = Math.round(Math.max(0, Math.min(1, ratio)) * 10);
+  const over = spending.allotted !== 0 && spending.spent > spending.allotted;
+  return (
+    <View style={styles.bar} accessible={false}>
+      {Array.from({ length: 10 }, (_, index) => (
+        <View
+          key={index}
+          style={[
+            styles.segment,
+            {
+              backgroundColor:
+                index < lit
+                  ? over
+                    ? palette.error
+                    : palette.primary
+                  : index < Math.round(pace * 10)
+                    ? palette.primaryContainer
+                    : palette.outlineVariant,
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+export default function SpendingScreen() {
   const systemScheme = useColorScheme();
-  const [serverUrl, setServerUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
   const [theme, setTheme] = useState<Settings["theme"]>("system");
-  const [saved, setSaved] = useState<Settings | null>(null);
-  const [budgets, setBudgets] = useState<ReadonlyArray<Budget>>([]);
-  const [busy, setBusy] = useState<string | null>("Loading settings...");
-  const [status, setStatus] = useState({ message: "", error: false });
+  const [budgetName, setBudgetName] = useState("");
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState("");
+  const pendingRefresh = useRef<AbortController | null>(null);
   const palette =
     theme === "bean" ? bean : systemScheme === "dark" ? night : paper;
 
-  useEffect(() => {
-    let cancelled = false;
-    const restore = async () => {
+  const loadSpending = useCallback(() => {
+    pendingRefresh.current?.abort();
+    const controller = new AbortController();
+    pendingRefresh.current = controller;
+    const load = async () => {
+      setBusy(true);
+      setError("");
+      setSummary(null);
       try {
-        const [settings, appearance] = await Promise.all([
-          Effect.runPromise(load),
+        const [appearance, data] = await Promise.all([
           Effect.runPromise(loadTheme),
+          Effect.runPromise(
+            Effect.gen(function* () {
+              const storage = yield* Storage;
+              const settings = yield* storage.loadSettings;
+              const cached = yield* storage.loadSummary.pipe(
+                Effect.catch(() => Effect.succeed(null)),
+              );
+              return { settings, cached };
+            }).pipe(
+              Effect.catchTag("MissingSettings", () => Effect.succeed(null)),
+              Effect.provide(storageLayer),
+            ),
+          ),
         ]);
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         setTheme(appearance);
-        setSaved(settings);
-        if (settings) {
-          setServerUrl(settings.serverUrl);
-          setApiKey(settings.apiKey);
+        if (data === null) {
+          router.replace("/settings");
+          return;
         }
+        setBudgetName(data.settings.budgetName ?? "Actual Budget");
+        setSummary(data.cached);
+        const updated = await Effect.runPromise(
+          refresh.pipe(
+            Effect.provide(Layer.mergeAll(storageLayer, FetchHttpClient.layer)),
+          ),
+          { signal: controller.signal },
+        );
+        if (!controller.signal.aborted) setSummary(updated);
       } catch {
-        if (!cancelled)
-          setStatus({
-            message: "Couldn't load settings. Reopen the app to try again.",
-            error: true,
-          });
+        if (!controller.signal.aborted)
+          setError(
+            "Couldn't update spending. Check your connection and try again.",
+          );
       } finally {
-        if (!cancelled) setBusy(null);
+        if (!controller.signal.aborted) setBusy(false);
       }
     };
-    void restore();
-    return () => {
-      cancelled = true;
-    };
+    void load();
   }, []);
 
-  const saveBudget = async (budget: Budget, url: string) => {
-    setBusy("Saving settings...");
-    setStatus({ message: "", error: false });
-    const settings: Settings = {
-      serverUrl: url,
-      apiKey,
-      syncId: budget.syncId,
-      budgetName: budget.name,
-      theme,
-    };
-    try {
-      await Effect.runPromise(
-        Effect.gen(function* () {
-          const storage = yield* Storage;
-          yield* storage.saveSettings(settings);
-        }).pipe(Effect.provide(storageLayer)),
-      );
-    } catch {
-      setStatus({
-        message: "Couldn't save settings on this device. Try again.",
-        error: true,
-      });
-      return;
-    }
-    setSaved(settings);
-    setBusy("Updating widgets...");
-    try {
-      await updateWidgets("connection");
-      setStatus({ message: `Saved. Using ${budget.name}.`, error: false });
-    } catch {
-      setStatus({
-        message:
-          "Settings saved. Widgets couldn't update. Tap a widget to retry.",
-        error: true,
-      });
-    }
-  };
+  useFocusEffect(
+    useCallback(() => {
+      loadSpending();
+      return () => pendingRefresh.current?.abort();
+    }, [loadSpending]),
+  );
 
-  const onConnect = async () => {
-    if (busy) return;
-    const url = serverUrl.trim().replace(/\/+$/, "");
-    try {
-      const parsed = new URL(url);
-      if (
-        !["http:", "https:"].includes(parsed.protocol) ||
-        parsed.username ||
-        parsed.password ||
-        parsed.search ||
-        parsed.hash
-      )
-        throw new Error("Invalid server URL");
-    } catch {
-      setStatus({
-        message:
-          "Enter an http:// or https:// server URL without credentials, a query, or a fragment.",
-        error: true,
-      });
-      return;
-    }
-    if (!apiKey.trim()) {
-      setStatus({ message: "Enter your API key.", error: true });
-      return;
-    }
-    setServerUrl(url);
-    setBudgets([]);
-    setStatus({ message: "", error: false });
-    setBusy("Connecting...");
-    try {
-      const found = await Effect.runPromise(
-        getBudgets({ serverUrl: url, apiKey }).pipe(
-          Effect.timeout("10 seconds"),
-          Effect.provide(FetchHttpClient.layer),
-          Effect.match({
-            onSuccess: (items) => items,
-            onFailure: (error) => {
-              let message =
-                "Couldn't connect. Check the server URL and API key, then try again.";
-              if (Predicate.isTagged(error, "SchemaError")) {
-                message =
-                  "The server returned an unexpected response. Check that this is the actual-http-api URL.";
-              } else if (Predicate.isTagged(error, "TimeoutError")) {
-                message =
-                  "The server took too long to respond. Check your connection and try again.";
-              } else if (
-                Predicate.isTagged(error, "HttpClientError") &&
-                (error.response?.status === 401 ||
-                  error.response?.status === 403)
-              ) {
-                message =
-                  "The server rejected this API key. Check the key and try again.";
-              }
-              setStatus({ message, error: true });
-              return null;
-            },
-          }),
-        ),
-      );
-      if (found === null) return;
-      setBudgets(found);
-      const current =
-        saved?.serverUrl === url && saved.apiKey === apiKey
-          ? found.find((budget) => budget.syncId === saved.syncId)
-          : undefined;
-      const budget = current ?? (found.length === 1 ? found[0] : undefined);
-      if (budget) await saveBudget(budget, url);
-      else
-        setStatus({
-          message:
-            found.length === 0
-              ? "No synced budgets found on this server."
-              : "Connected. Choose a budget to save.",
-          error: false,
-        });
-    } catch {
-      setStatus({
-        message:
-          "Couldn't connect. Check the server URL and API key, then try again.",
-        error: true,
-      });
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const onTheme = async (picked: Settings["theme"]) => {
-    if (busy || picked === theme) return;
-    const previous = theme;
-    setTheme(picked);
-    setBusy("Saving appearance...");
-    setStatus({ message: "", error: false });
-    try {
-      await Effect.runPromise(saveTheme(picked));
-    } catch {
-      setTheme(previous);
-      setStatus({
-        message: "Couldn't save appearance on this device. Try again.",
-        error: true,
-      });
-      setBusy(null);
-      return;
-    }
-    try {
-      await updateWidgets("appearance");
-    } catch {
-      setStatus({
-        message:
-          "Appearance saved. Widgets couldn't update. Tap a widget to retry.",
-        error: true,
-      });
-    } finally {
-      setBusy(null);
-    }
-  };
-
+  const monthly = summary?.monthly;
+  const left = monthly ? monthly.allotted - monthly.spent : 0;
   const text = { color: palette.onSurface };
   const muted = { color: palette.onSurfaceVariant };
-  const field = [styles.field, text, { borderColor: palette.onSurfaceVariant }];
+  const groups = [
+    ...new Set(monthly?.categories.map((category) => category.group) ?? []),
+  ];
+  const monthLabel = summary
+    ? new Intl.DateTimeFormat("en", {
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Tokyo",
+      }).format(new Date(`${summary.date}T00:00:00+09:00`))
+    : "This month";
 
   return (
     <SafeAreaProvider>
@@ -243,239 +160,180 @@ export default function Index() {
         <StatusBar
           barStyle={palette === night ? "light-content" : "dark-content"}
         />
-        <KeyboardAvoidingView style={styles.screen} behavior="height">
-          <ScrollView
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.heading}>
-              <Text style={[styles.eyebrow, muted]}>SPEND BEAN</Text>
-              <Text accessibilityRole="header" style={[styles.title, text]}>
-                Settings
-              </Text>
-            </View>
-            <View style={styles.section}>
-              <Text
-                accessibilityRole="header"
-                style={[styles.sectionTitle, text]}
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.heading}>
+            <Text style={[styles.eyebrow, muted]}>SPEND BEAN</Text>
+            <Link
+              href="/settings"
+              style={[styles.link, { color: palette.primary }]}
+            >
+              Settings
+            </Link>
+          </View>
+          <View style={styles.section}>
+            <Text accessibilityRole="header" style={[styles.title, text]}>
+              {monthLabel}
+            </Text>
+            {budgetName !== "" && (
+              <Text style={[styles.body, muted]}>{budgetName}</Text>
+            )}
+          </View>
+          {monthly && (
+            <>
+              <View style={styles.section}>
+                <Text style={[styles.body, muted]}>
+                  {monthly.allotted === 0
+                    ? "Spent this month"
+                    : left < 0
+                      ? "Over budget"
+                      : "Left this month"}
+                </Text>
+                <Text
+                  style={[
+                    styles.amount,
+                    {
+                      color:
+                        monthly.allotted !== 0 && left < 0
+                          ? palette.error
+                          : palette.onSurface,
+                    },
+                  ]}
+                >
+                  {yen(monthly.allotted === 0 ? monthly.spent : Math.abs(left))}
+                </Text>
+                <Text style={[styles.body, text]}>
+                  {yen(monthly.spent)} spent · {yen(monthly.allotted)} budgeted
+                </Text>
+                {monthly.allotted === 0 ? (
+                  <Text style={[styles.body, muted]}>
+                    No budget assigned this month.
+                  </Text>
+                ) : (
+                  <>
+                    <SpendingBar
+                      spending={monthly}
+                      pace={monthly.pace}
+                      palette={palette}
+                    />
+                    <Text style={[styles.caption, muted]}>
+                      {Math.round(monthly.pace * 100)}% of the month elapsed.
+                      Pale segments mark the month's pace.
+                    </Text>
+                  </>
+                )}
+                <Text style={[styles.caption, muted]}>
+                  Remaining amounts use this month's assigned budget, without
+                  carryover.
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.section,
+                  styles.divider,
+                  { borderColor: palette.outlineVariant },
+                ]}
               >
-                Appearance
-              </Text>
-              <Text style={[styles.description, muted]}>
-                Choose the colors for the app and your widgets.
-              </Text>
-              <View accessibilityRole="radiogroup" style={styles.choices}>
-                {(
-                  [
-                    {
-                      value: "system",
-                      label: "System",
-                      description: "Paper in light mode, Night in dark mode",
-                    },
-                    {
-                      value: "bean",
-                      label: "Bean",
-                      description: "Warm paper and coffee brown",
-                    },
-                  ] as const
-                ).map((choice) => (
-                  <Pressable
-                    key={choice.value}
-                    accessibilityRole="radio"
-                    accessibilityState={{
-                      checked: theme === choice.value,
-                      disabled: busy !== null,
-                    }}
-                    disabled={busy !== null}
-                    onPress={() => {
-                      void onTheme(choice.value);
-                    }}
-                    style={[
-                      styles.choice,
-                      {
-                        borderColor:
-                          theme === choice.value
-                            ? palette.primary
-                            : palette.outlineVariant,
-                        backgroundColor:
-                          theme === choice.value
-                            ? palette.primaryContainer
-                            : palette.surface,
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[styles.radio, { borderColor: palette.primary }]}
+                <Text
+                  accessibilityRole="header"
+                  style={[styles.sectionTitle, text]}
+                >
+                  Categories
+                </Text>
+                {groups.length === 0 && (
+                  <Text style={[styles.body, muted]}>
+                    No category budgets or spending this month.
+                  </Text>
+                )}
+                {groups.map((group) => (
+                  <View key={group} style={styles.group}>
+                    <Text
+                      accessibilityRole="header"
+                      style={[styles.groupTitle, muted]}
                     >
-                      {theme === choice.value && (
-                        <View
-                          style={[
-                            styles.radioDot,
-                            { backgroundColor: palette.primary },
-                          ]}
-                        />
-                      )}
-                    </View>
-                    <View style={styles.choiceText}>
-                      <Text style={[styles.choiceTitle, text]}>
-                        {choice.label}
-                      </Text>
-                      <Text style={[styles.description, text]}>
-                        {choice.description}
-                      </Text>
-                    </View>
-                  </Pressable>
+                      {group}
+                    </Text>
+                    {monthly.categories
+                      .filter((category) => category.group === group)
+                      .map((category) => {
+                        const remaining = category.allotted - category.spent;
+                        return (
+                          <View key={category.id} style={styles.category}>
+                            <Text style={[styles.categoryName, text]}>
+                              {category.name}
+                            </Text>
+                            <View style={styles.figures}>
+                              <Text style={[styles.body, text]}>
+                                {yen(category.spent)} spent
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.body,
+                                  {
+                                    color:
+                                      category.allotted !== 0 && remaining < 0
+                                        ? palette.error
+                                        : palette.onSurface,
+                                  },
+                                ]}
+                              >
+                                {category.allotted === 0
+                                  ? "No budget assigned"
+                                  : `${yen(Math.abs(remaining))} ${remaining < 0 ? "over budget" : "left"}`}
+                              </Text>
+                            </View>
+                            {category.allotted !== 0 && (
+                              <SpendingBar
+                                spending={category}
+                                palette={palette}
+                              />
+                            )}
+                            <Text style={[styles.caption, muted]}>
+                              {yen(category.allotted)} budgeted
+                            </Text>
+                          </View>
+                        );
+                      })}
+                  </View>
                 ))}
               </View>
-            </View>
-            <View
-              style={[
-                styles.section,
-                styles.connection,
-                { borderColor: palette.outlineVariant },
-              ]}
+            </>
+          )}
+          {!monthly && !busy && (
+            <Text style={[styles.body, text]}>
+              No spending details saved yet. Refresh to load this month.
+            </Text>
+          )}
+          {summary?.monthly && (
+            <Text style={[styles.caption, muted]}>
+              Updated {summary.updatedAt.slice(0, 10)} at{" "}
+              {summary.updatedAt.slice(11, 16)} JST
+            </Text>
+          )}
+          {error !== "" && (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[styles.body, { color: palette.error }]}
             >
-              <Text
-                accessibilityRole="header"
-                style={[styles.sectionTitle, text]}
-              >
-                Actual Budget
-              </Text>
-              <Text style={[styles.description, muted]}>
-                Connect to your actual-http-api server.
-              </Text>
-              <Text nativeID="server-label" style={[styles.label, text]}>
-                Server URL
-              </Text>
-              <TextInput
-                accessibilityLabel="Server URL"
-                accessibilityLabelledBy="server-label"
-                style={field}
-                value={serverUrl}
-                onChangeText={(value) => {
-                  setServerUrl(value);
-                  setBudgets([]);
-                  setStatus({ message: "", error: false });
-                }}
-                editable={busy === null}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                placeholder="https://actual-api.example.com"
-                placeholderTextColor={palette.onSurfaceVariant}
-                selectionColor={palette.primary}
-              />
-              <Text nativeID="api-key-label" style={[styles.label, text]}>
-                API key
-              </Text>
-              <TextInput
-                accessibilityLabel="API key"
-                accessibilityLabelledBy="api-key-label"
-                style={field}
-                value={apiKey}
-                onChangeText={(value) => {
-                  setApiKey(value);
-                  setBudgets([]);
-                  setStatus({ message: "", error: false });
-                }}
-                editable={busy === null}
-                autoCapitalize="none"
-                autoCorrect={false}
-                secureTextEntry
-                selectionColor={palette.primary}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{
-                  disabled: busy !== null,
-                  busy: busy !== null,
-                }}
-                disabled={busy !== null}
-                onPress={() => {
-                  void onConnect();
-                }}
-                style={[
-                  styles.button,
-                  { backgroundColor: palette.primary, opacity: busy ? 0.6 : 1 },
-                ]}
-              >
-                <Text style={[styles.buttonText, { color: palette.onPrimary }]}>
-                  Connect
-                </Text>
-              </Pressable>
-              {saved && (
-                <Text style={[styles.description, muted]}>
-                  Saved budget: {saved.budgetName ?? saved.syncId}
-                </Text>
-              )}
-              {budgets.length > 1 && (
-                <View accessibilityRole="radiogroup" style={styles.choices}>
-                  <Text style={[styles.label, text]}>Choose a budget</Text>
-                  {budgets.map((budget) => {
-                    const selected =
-                      saved?.serverUrl === serverUrl &&
-                      saved.apiKey === apiKey &&
-                      saved.syncId === budget.syncId;
-                    return (
-                      <Pressable
-                        key={budget.syncId}
-                        accessibilityRole="radio"
-                        accessibilityState={{
-                          checked: selected,
-                          disabled: busy !== null,
-                        }}
-                        disabled={busy !== null}
-                        style={[
-                          styles.choice,
-                          {
-                            borderColor: selected
-                              ? palette.primary
-                              : palette.outlineVariant,
-                          },
-                        ]}
-                        onPress={() => {
-                          if (busy) return;
-                          void saveBudget(budget, serverUrl).finally(() =>
-                            setBusy(null),
-                          );
-                        }}
-                      >
-                        <Text style={[styles.choiceTitle, text]}>
-                          {selected ? "Selected: " : ""}
-                          {budget.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-            {busy && (
-              <View style={styles.progress}>
-                <ActivityIndicator color={palette.primary} />
-                <Text accessibilityLiveRegion="polite" style={muted}>
-                  {busy}
-                </Text>
-              </View>
-            )}
-            {status.message !== "" && (
-              <Text
-                accessibilityLiveRegion="polite"
-                style={[
-                  styles.description,
-                  { color: status.error ? palette.error : palette.onSurface },
-                ]}
-              >
-                {status.message}
-              </Text>
-            )}
-            {__DEV__ && (
-              <Link href="/preview" style={{ color: palette.primary }}>
-                Widget preview
-              </Link>
-            )}
-          </ScrollView>
-        </KeyboardAvoidingView>
+              {error}
+              {monthly ? " Showing saved spending." : ""}
+            </Text>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: busy, busy }}
+            disabled={busy}
+            onPress={loadSpending}
+            style={[styles.refresh, { borderColor: palette.outlineVariant }]}
+          >
+            {busy && <ActivityIndicator color={palette.primary} />}
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[styles.body, { color: palette.primary }]}
+            >
+              {busy ? "Updating spending..." : "Refresh"}
+            </Text>
+          </Pressable>
+        </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -483,50 +341,42 @@ export default function Index() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 24, gap: 24, paddingBottom: 40 },
-  heading: { gap: 6, paddingTop: 12 },
-  eyebrow: { fontSize: 12, fontWeight: "700", letterSpacing: 2 },
-  title: { fontSize: 32, fontWeight: "700" },
-  section: { gap: 12 },
-  sectionTitle: { fontSize: 20, fontWeight: "600" },
-  description: { fontSize: 14, lineHeight: 21 },
-  choices: { gap: 10 },
-  choice: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    minHeight: 56,
+  content: { padding: 24, paddingBottom: 40, gap: 24 },
+  heading: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    justifyContent: "space-between",
+    gap: 16,
   },
-  choiceText: { flex: 1, gap: 4 },
-  choiceTitle: { fontSize: 16, fontWeight: "600" },
-  radio: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
+  eyebrow: { fontSize: 12, fontWeight: "700", letterSpacing: 2 },
+  link: { fontSize: 16, paddingVertical: 12 },
+  title: { fontSize: 32, fontWeight: "700" },
+  sectionTitle: { fontSize: 20, fontWeight: "600" },
+  section: { gap: 12 },
+  amount: { fontSize: 44, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  body: { fontSize: 14, lineHeight: 21, fontVariant: ["tabular-nums"] },
+  caption: { fontSize: 12, lineHeight: 18 },
+  divider: { borderTopWidth: 1, paddingTop: 24 },
+  group: { gap: 20, marginTop: 8 },
+  groupTitle: { fontSize: 14, fontWeight: "600" },
+  category: { gap: 8 },
+  categoryName: { fontSize: 18, fontWeight: "600" },
+  figures: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 8,
   },
-  radioDot: { width: 10, height: 10, borderRadius: 5 },
-  connection: { borderTopWidth: 1, paddingTop: 24 },
-  label: { fontSize: 14, fontWeight: "600" },
-  field: {
+  bar: { flexDirection: "row", gap: 3, height: 14 },
+  segment: { flex: 1, borderRadius: 4 },
+  refresh: {
+    minHeight: 52,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    minHeight: 52,
-    fontSize: 16,
-  },
-  button: {
-    minHeight: 52,
     borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
     padding: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
   },
-  buttonText: { fontSize: 16, fontWeight: "600" },
-  progress: { flexDirection: "row", alignItems: "center", gap: 12 },
 });

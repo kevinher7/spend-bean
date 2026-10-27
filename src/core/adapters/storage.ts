@@ -19,6 +19,20 @@ const SummarySchema = Schema.Struct({
   updatedAt: Schema.String,
   daily: Spending,
   weekly: Spending,
+  monthly: Schema.optionalKey(
+    Schema.Struct({
+      ...Spending.fields,
+      pace: Schema.Number,
+      categories: Schema.Array(
+        Schema.Struct({
+          ...Spending.fields,
+          id: Schema.String,
+          name: Schema.String,
+          group: Schema.String,
+        }),
+      ),
+    }),
+  ),
   pace: Schema.Number,
 });
 
