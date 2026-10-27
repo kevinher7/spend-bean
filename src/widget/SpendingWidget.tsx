@@ -53,9 +53,9 @@ const Label = ({ text, palette }: { text: string; palette: Palette }) => (
   <TextWidget
     text={text}
     style={{
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "bold",
-      letterSpacing: 1,
+      letterSpacing: 1.5,
       color: palette.onSurfaceVariant,
     }}
   />
@@ -134,14 +134,14 @@ const WideRow = ({
       flexGap: 8,
     }}
   >
-    <FlexWidget style={{ width: 42 }}>
+    <FlexWidget style={{ width: 54 }}>
       <Label text={label} palette={palette} />
     </FlexWidget>
-    <Bar spending={spending} pace={pace} height={12} palette={palette} />
+    <Bar spending={spending} pace={pace} height={18} palette={palette} />
     <FlexWidget
-      style={{ width: 72, flexDirection: "row", justifyContent: "flex-end" }}
+      style={{ width: 88, flexDirection: "row", justifyContent: "flex-end" }}
     >
-      <Left spending={spending} fontSize={14} palette={palette} />
+      <Left spending={spending} fontSize={18} palette={palette} />
     </FlexWidget>
   </FlexWidget>
 );
@@ -163,12 +163,12 @@ export const SpendingWidget = ({
       width: "match_parent",
       height: "match_parent",
       flexDirection: "column",
-      justifyContent: "center",
+      justifyContent: "space-evenly",
       backgroundColor: palette.surface,
       borderRadius: 24,
       ...(size === "square"
-        ? { flexGap: 12, padding: 14 }
-        : { flexGap: 6, paddingHorizontal: 16 }),
+        ? { paddingHorizontal: 16, paddingVertical: 8 }
+        : { paddingHorizontal: 16, paddingVertical: 4 }),
     }}
   >
     {summary === null && (
@@ -184,8 +184,8 @@ export const SpendingWidget = ({
         label="TODAY"
         spending={summary.daily}
         pace={null}
-        fontSize={18}
-        height={16}
+        fontSize={24}
+        height={22}
         palette={palette}
       />
     )}
@@ -194,8 +194,8 @@ export const SpendingWidget = ({
         label="WEEK"
         spending={summary.weekly}
         pace={summary.pace}
-        fontSize={14}
-        height={10}
+        fontSize={20}
+        height={14}
         palette={palette}
       />
     )}
