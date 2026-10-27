@@ -156,70 +156,82 @@ export const SpendingWidget = ({
   stale: boolean;
   palette: Palette;
   size: "square" | "wide";
-}) => (
-  <FlexWidget
-    clickAction="REFRESH"
-    style={{
-      width: "match_parent",
-      height: "match_parent",
-      flexDirection: "column",
-      justifyContent: "space-evenly",
-      backgroundColor: palette.surface,
-      borderRadius: 24,
-      ...(size === "square"
-        ? { paddingHorizontal: 16, paddingVertical: 8 }
-        : { paddingHorizontal: 16, paddingVertical: 4 }),
-    }}
-  >
-    {summary === null && (
-      <TextWidget
-        text={
-          stale ? "Could not reach the server" : "Open Spend Bean to set up"
-        }
-        style={{ fontSize: 14, color: palette.onSurface }}
-      />
-    )}
-    {summary !== null && size === "square" && (
-      <SquareUnit
-        label="TODAY"
-        spending={summary.daily}
-        pace={null}
-        fontSize={24}
-        height={22}
-        palette={palette}
-      />
-    )}
-    {summary !== null && size === "square" && (
-      <SquareUnit
-        label="WEEK"
-        spending={summary.weekly}
-        pace={summary.pace}
-        fontSize={20}
-        height={14}
-        palette={palette}
-      />
-    )}
-    {summary !== null && size === "square" && stale && (
-      <TextWidget
-        text={`updated ${summary.updatedAt.slice(5, 10)} ${summary.updatedAt.slice(11, 16)}`}
-        style={{ fontSize: 10, color: palette.onSurfaceVariant }}
-      />
-    )}
-    {summary !== null && size === "wide" && (
-      <WideRow
-        label="TODAY"
-        spending={summary.daily}
-        pace={null}
-        palette={palette}
-      />
-    )}
-    {summary !== null && size === "wide" && (
-      <WideRow
-        label="WEEK"
-        spending={summary.weekly}
-        pace={summary.pace}
-        palette={palette}
-      />
-    )}
-  </FlexWidget>
-);
+}) => {
+  // space-evenly puts a spacer around every child, including a `false` one,
+  // so the rows are built as a flat array with nothing hidden in it.
+  const rows =
+    summary === null
+      ? [
+          <TextWidget
+            key="message"
+            text={
+              stale ? "Could not reach the server" : "Open Spend Bean to set up"
+            }
+            style={{ fontSize: 14, color: palette.onSurface }}
+          />,
+        ]
+      : size === "square"
+        ? [
+            <SquareUnit
+              key="today"
+              label="TODAY"
+              spending={summary.daily}
+              pace={null}
+              fontSize={24}
+              height={22}
+              palette={palette}
+            />,
+            <SquareUnit
+              key="week"
+              label="WEEK"
+              spending={summary.weekly}
+              pace={summary.pace}
+              fontSize={20}
+              height={14}
+              palette={palette}
+            />,
+            ...(stale
+              ? [
+                  <TextWidget
+                    key="updated"
+                    text={`updated ${summary.updatedAt.slice(5, 10)} ${summary.updatedAt.slice(11, 16)}`}
+                    style={{ fontSize: 10, color: palette.onSurfaceVariant }}
+                  />,
+                ]
+              : []),
+          ]
+        : [
+            <WideRow
+              key="today"
+              label="TODAY"
+              spending={summary.daily}
+              pace={null}
+              palette={palette}
+            />,
+            <WideRow
+              key="week"
+              label="WEEK"
+              spending={summary.weekly}
+              pace={summary.pace}
+              palette={palette}
+            />,
+          ];
+
+  return (
+    <FlexWidget
+      clickAction="REFRESH"
+      style={{
+        width: "match_parent",
+        height: "match_parent",
+        flexDirection: "column",
+        justifyContent: "space-evenly",
+        backgroundColor: palette.surface,
+        borderRadius: 24,
+        paddingHorizontal: 16,
+        paddingVertical: size === "square" ? 8 : 4,
+      }}
+    >
+      {rows}
+    </FlexWidget>
+  );
+};
