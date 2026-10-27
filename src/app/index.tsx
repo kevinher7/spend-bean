@@ -1,10 +1,12 @@
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
+import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import { Link } from "expo-router";
 import { useEffect, useState } from "react";
-import { Button, Text, TextInput, View } from "react-native";
+import { Button, Pressable, Text, TextInput, View } from "react-native";
 
+import { getBudgets } from "../core/adapters/actual.ts";
 import { storageLayer } from "../core/adapters/storage.ts";
-import { type Settings, Storage } from "../core/contracts.ts";
+import { type Budget, Storage } from "../core/contracts.ts";
 
 const load = Effect.gen(function* () {
   const storage = yield* Storage;
@@ -16,16 +18,24 @@ const load = Effect.gen(function* () {
   Effect.provide(storageLayer),
 );
 
-const save = (settings: Settings) =>
+const save = (serverUrl: string, apiKey: string, preferredSyncId: string) =>
   Effect.gen(function* () {
-    const storage = yield* Storage;
-    yield* storage.saveSettings(settings);
-  }).pipe(Effect.provide(storageLayer));
+    const budgets = yield* getBudgets({ serverUrl, apiKey });
+    const budget =
+      budgets.find((candidate) => candidate.syncId === preferredSyncId) ??
+      (budgets.length === 1 ? budgets[0] : undefined);
+    if (budget) {
+      const storage = yield* Storage;
+      yield* storage.saveSettings({ serverUrl, apiKey, syncId: budget.syncId });
+    }
+    return { budgets, budget };
+  }).pipe(Effect.provide(Layer.mergeAll(storageLayer, FetchHttpClient.layer)));
 
 export default function Index() {
   const [serverUrl, setServerUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [syncId, setSyncId] = useState("");
+  const [budgets, setBudgets] = useState<ReadonlyArray<Budget>>([]);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
@@ -43,11 +53,26 @@ export default function Index() {
     );
   }, []);
 
-  const onSave = () => {
+  const onSave = (preferredSyncId: string) => {
+    const url = serverUrl.trim().replace(/\/+$/, "");
+    setServerUrl(url);
+    setStatus("Connecting...");
     Effect.runFork(
-      save({ serverUrl, apiKey, syncId }).pipe(
+      save(url, apiKey, preferredSyncId).pipe(
         Effect.match({
-          onSuccess: () => setStatus("Saved"),
+          onSuccess: ({ budgets: found, budget }) => {
+            setBudgets(found);
+            if (budget) {
+              setSyncId(budget.syncId);
+              setStatus(`Saved. Using ${budget.name}.`);
+            } else {
+              setStatus(
+                found.length === 0
+                  ? "The server has no budgets."
+                  : "Pick a budget.",
+              );
+            }
+          },
           onFailure: (error) => setStatus(`Failed to save: ${String(error)}`),
         }),
       ),
@@ -70,7 +95,8 @@ export default function Index() {
         onChangeText={setServerUrl}
         autoCapitalize="none"
         autoCorrect={false}
-        placeholder="https://actual-api.beanhaven.net"
+        keyboardType="url"
+        placeholder="https://actual-api.example.com"
       />
       <Text>API key</Text>
       <TextInput
@@ -81,15 +107,20 @@ export default function Index() {
         autoCorrect={false}
         secureTextEntry
       />
-      <Text>Budget sync ID</Text>
-      <TextInput
-        style={field}
-        value={syncId}
-        onChangeText={setSyncId}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-      <Button title="Save" onPress={onSave} />
+      <Button title="Save" onPress={() => onSave(syncId)} />
+      {budgets.length > 1 &&
+        budgets.map((budget) => (
+          <Pressable
+            key={budget.syncId}
+            style={[
+              field,
+              budget.syncId === syncId && { borderColor: "#2E7D32" },
+            ]}
+            onPress={() => onSave(budget.syncId)}
+          >
+            <Text>{budget.name}</Text>
+          </Pressable>
+        ))}
       <Text>{status}</Text>
       {__DEV__ && <Link href="/preview">Widget preview</Link>}
     </View>

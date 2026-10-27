@@ -3,6 +3,7 @@ import * as HttpClient from "effect/http/HttpClient";
 
 import type {
   Account,
+  Budget,
   BudgetMonth,
   Settings,
   Transaction,
@@ -10,6 +11,16 @@ import type {
 
 // Actual stores amounts x100, even for yen.
 const toYen = (amount: number) => amount / 100;
+
+const BudgetsResponse = Schema.Struct({
+  data: Schema.Array(
+    Schema.Struct({
+      // A budget that was never synced has no sync ID.
+      groupId: Schema.optionalKey(Schema.String),
+      name: Schema.String,
+    }),
+  ),
+});
 
 const AccountsResponse = Schema.Struct({
   data: Schema.Array(
@@ -48,7 +59,7 @@ const TransactionsResponse = Schema.Struct({
 });
 
 const get = (
-  settings: Settings,
+  settings: Pick<Settings, "serverUrl" | "apiKey">,
   path: string,
   urlParams?: Record<string, string>,
 ) =>
@@ -56,15 +67,29 @@ const get = (
     const client = (yield* HttpClient.HttpClient).pipe(
       HttpClient.filterStatusOk,
     );
-    const response = yield* client.get(
-      `${settings.serverUrl}/v1/budgets/${settings.syncId}${path}`,
-      { headers: { "x-api-key": settings.apiKey }, urlParams },
-    );
+    const response = yield* client.get(`${settings.serverUrl}/v1${path}`, {
+      headers: { "x-api-key": settings.apiKey },
+      urlParams,
+    });
     return yield* response.json;
   });
 
+export const getBudgets = (settings: Pick<Settings, "serverUrl" | "apiKey">) =>
+  get(settings, "/budgets").pipe(
+    Effect.flatMap(Schema.decodeUnknownEffect(BudgetsResponse)),
+    Effect.map(({ data }) => {
+      // A budget is listed twice once actual-http-api has downloaded it.
+      const names = new Map(
+        data.flatMap(({ groupId, name }) =>
+          groupId === undefined ? [] : [[groupId, name] as const],
+        ),
+      );
+      return [...names].map(([syncId, name]): Budget => ({ syncId, name }));
+    }),
+  );
+
 export const getAccounts = (settings: Settings) =>
-  get(settings, "/accounts").pipe(
+  get(settings, `/budgets/${settings.syncId}/accounts`).pipe(
     Effect.flatMap(Schema.decodeUnknownEffect(AccountsResponse)),
     Effect.map(({ data }) =>
       data.map((account): Account => ({
@@ -77,7 +102,7 @@ export const getAccounts = (settings: Settings) =>
   );
 
 export const getBudgetMonth = (settings: Settings, month: string) =>
-  get(settings, `/months/${month}`).pipe(
+  get(settings, `/budgets/${settings.syncId}/months/${month}`).pipe(
     Effect.flatMap(Schema.decodeUnknownEffect(BudgetMonthResponse)),
     Effect.map(({ data }): BudgetMonth => ({
       month: data.month,
@@ -94,9 +119,11 @@ export const getTransactions = (
   accountId: string,
   sinceDate: string,
 ) =>
-  get(settings, `/accounts/${accountId}/transactions`, {
-    since_date: sinceDate,
-  }).pipe(
+  get(
+    settings,
+    `/budgets/${settings.syncId}/accounts/${accountId}/transactions`,
+    { since_date: sinceDate },
+  ).pipe(
     Effect.flatMap(Schema.decodeUnknownEffect(TransactionsResponse)),
     Effect.map(({ data }) =>
       data.map((transaction): Transaction => ({
