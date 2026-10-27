@@ -8,6 +8,7 @@ export type Settings = {
   readonly serverUrl: string;
   readonly apiKey: string;
   readonly syncId: string;
+  readonly budgetName?: string;
   // "system" is Paper in light mode and Night in dark mode.
   readonly theme: "system" | "bean";
 };
