@@ -1,4 +1,4 @@
-import type { BudgetMonth, Transaction } from "./contracts.ts";
+import type { BudgetMonth, MonthlySpending, Transaction } from "./contracts.ts";
 
 const daysInMonth = (year: number, month: number) => {
   if (month === 2) {
@@ -100,7 +100,65 @@ export const summarize = (
     (weeklyAllotted - spentBeforeToday) / daysLeft,
   );
 
+  const month = months.find(
+    (candidate) => candidate.month === today.slice(0, 7),
+  );
+  const monthlyTransactions = spending.filter(
+    (transaction) =>
+      transaction.date >= `${today.slice(0, 7)}-01` &&
+      transaction.date <= today,
+  );
+  const spentByCategory = new Map<string | null, number>();
+  for (const transaction of monthlyTransactions) {
+    spentByCategory.set(
+      transaction.categoryId,
+      (spentByCategory.get(transaction.categoryId) ?? 0) - transaction.amount,
+    );
+  }
+  const categories = (month?.categories ?? []).map((category) => ({
+    id: category.id,
+    name: category.name,
+    group: category.group,
+    allotted: category.budgeted,
+    spent: spentByCategory.get(category.id) ?? 0,
+  }));
+  const categoryIds = new Set(categories.map((category) => category.id));
+  const unassigned = monthlyTransactions.filter(
+    (transaction) =>
+      transaction.categoryId === null ||
+      !categoryIds.has(transaction.categoryId),
+  );
+  if (unassigned.length > 0) {
+    categories.push({
+      id: "uncategorized",
+      name: "Uncategorized",
+      group: "Uncategorized",
+      allotted: 0,
+      spent:
+        0 -
+        unassigned.reduce((sum, transaction) => sum + transaction.amount, 0),
+    });
+  }
+  const { year, month: monthNumber, day } = parseDate(today);
+  const monthly: MonthlySpending = {
+    allotted: month?.budgeted ?? 0,
+    spent:
+      0 -
+      monthlyTransactions.reduce(
+        (sum, transaction) => sum + transaction.amount,
+        0,
+      ),
+    pace: day / daysInMonth(year, monthNumber),
+    categories: categories.filter(
+      (category) =>
+        category.allotted !== 0 ||
+        category.spent !== 0 ||
+        spentByCategory.has(category.id),
+    ),
+  };
+
   return {
+    monthly,
     daily: {
       allotted: Math.round(dailyAllotted),
       spent: spentWhere((date) => date === today),

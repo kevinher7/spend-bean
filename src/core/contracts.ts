@@ -29,6 +29,12 @@ export type BudgetMonth = {
   readonly month: string;
   readonly budgeted: number;
   readonly incomeCategoryIds: ReadonlyArray<string>;
+  readonly categories: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string;
+    readonly group: string;
+    readonly budgeted: number;
+  }>;
 };
 
 export type Transaction = {
@@ -44,12 +50,25 @@ export type Spending = {
   readonly spent: number;
 };
 
+export type MonthlySpending = Spending & {
+  readonly pace: number;
+  readonly categories: ReadonlyArray<
+    Spending & {
+      readonly id: string;
+      readonly name: string;
+      readonly group: string;
+    }
+  >;
+};
+
 export type Summary = {
   readonly date: string;
   // ISO timestamp with the +09:00 offset.
   readonly updatedAt: string;
   readonly daily: Spending;
   readonly weekly: Spending;
+  // Cached summaries from older versions have no monthly figures.
+  readonly monthly?: MonthlySpending;
   // The fraction of the weekly budget that should be used by the end of
   // today: 1/7 on Monday, 1 on Sunday.
   readonly pace: number;

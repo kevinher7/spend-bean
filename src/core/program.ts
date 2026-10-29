@@ -16,6 +16,8 @@ export const refresh = Effect.gen(function* () {
   const now = DateTime.setZoneOffset(yield* DateTime.now, tokyoOffset);
   const today = DateTime.formatIsoDate(now);
   const { monday, sunday } = weekOf(today);
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const sinceDate = monday < monthStart ? monday : monthStart;
 
   const { months, transactions } = yield* Effect.gen(function* () {
     const accounts = yield* getAccounts(settings);
@@ -28,7 +30,7 @@ export const refresh = Effect.gen(function* () {
         ),
         transactions: Effect.forEach(
           accounts.filter((account) => account.onBudget),
-          (account) => getTransactions(settings, account.id, monday),
+          (account) => getTransactions(settings, account.id, sinceDate),
           { concurrency: "unbounded" },
         ),
       },
